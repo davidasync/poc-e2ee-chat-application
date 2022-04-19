@@ -1,0 +1,15 @@
+version: "3.5"
+
+services:
+  redisSingleCluster:
+    image: redis
+    ports:
+      - "6379:6379"
+
+  redisCommanderLocal:
+    image: rediscommander/redis-commander:latest
+    environment:
+      - REDIS_HOST=redisSingleCluster
+      - REDIS_PORT=6379
+    ports:
+      - "8081:8081"
