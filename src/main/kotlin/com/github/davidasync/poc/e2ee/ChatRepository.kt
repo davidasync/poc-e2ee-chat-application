@@ -72,7 +72,6 @@ class ChatRepository(
 
         val chatRoom = ChatRoom(
             id = chatRoomId,
-            base64publicKeyJwk = chatRoomRequest.base64publicKeyJwk,
             member = listOf(chatRoomRequest.username)
         )
 

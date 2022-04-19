@@ -12,11 +12,6 @@
 
 <script lang="ts">
   import { defineComponent } from 'vue'
-  import generateKey from '../lib/generateKeyPair'
-  import encrypt from '../lib/encrypt'
-  import decrypt from '../lib/decrypt'
-  import deriveKey from '../lib/deriveKey'
-  import sym_encrypt from '../lib/sym_encrypt'
 
   export default defineComponent({
     layout: 'custom',
@@ -26,14 +21,14 @@
       }
     },
     async mounted() {
-      const keyPair = await generateKey()
-      this.publicKeyJwk = keyPair.publicKeyJwk
-      this.publicKeyJwkBase64 = btoa(JSON.stringify(this.publicKeyJwk))
-      this.privateKeyJwk = keyPair.privateKeyJwk
-      this.deriveKey = await deriveKey(this.publicKeyJwk, this.privateKeyJwk)
+      // const keyPair = await generateKey()
+      // this.publicKeyJwk = keyPair.publicKeyJwk
+      // this.publicKeyJwkBase64 = btoa(JSON.stringify(this.publicKeyJwk))
+      // this.privateKeyJwk = keyPair.privateKeyJwk
+      // this.deriveKey = await deriveKey(this.publicKeyJwk, this.privateKeyJwk)
 
-      this.encryptedSampleText = await encrypt(this.sampleText, this.deriveKey)
-      this.decryptedSampleText = await decrypt(this.encryptedSampleText, this.deriveKey)
+      // this.encryptedSampleText = await encrypt(this.sampleText, this.deriveKey)
+      // this.decryptedSampleText = await decrypt(this.encryptedSampleText, this.deriveKey)
     },
     methods: {
       async createRoom() {
