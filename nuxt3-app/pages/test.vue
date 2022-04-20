@@ -1,5 +1,6 @@
 <template>
   <NuxtLayout name="custom">
+    <p>sampleText: {{ sampleText }}</p>
     <p>symEncryptedSampleText1: {{ symEncryptedSampleText1 }}</p>
     <p>symDecryptedSampleText1: {{ symDecryptedSampleText1 }}</p>
     <p>dfEncryptedSampleText1: {{ dfEncryptedSampleText1 }}</p>
@@ -25,13 +26,25 @@
       }
     },
     async mounted() {
-      new Symmetrical()
-      this.symEncryptedSampleText1 = await Symmetrical.encrypt(this.sampleText)
-      this.symDecryptedSampleText1 = await Symmetrical.decrypt(this.symEncryptedSampleText1)
+      const roomId = '1'
+      new Symmetrical(roomId)
+      this.symEncryptedSampleText1 = await Symmetrical.encrypt(roomId, this.sampleText)
+      this.symDecryptedSampleText1 = await Symmetrical.decrypt(roomId, this.symEncryptedSampleText1)
 
-      const df = await DeffieHellman.create()
-      this.dfEncryptedSampleText1 = await df.encrypt(this.sampleText)
-      this.dfDecryptedSampleText1 = await df.decrypt(this.dfEncryptedSampleText1)
+      console.log('publicKeyJwk', JSON.parse(window.localStorage.getItem(DeffieHellman.PUBLIC_KEY_JWK)))
+      console.log('privateKeyJwk', JSON.parse(window.localStorage.getItem(DeffieHellman.PRIVATE_KEY_JWK)))
+
+      await DeffieHellman.create()
+      this.dfEncryptedSampleText1 = await DeffieHellman.encrypt(
+        JSON.parse(window.localStorage.getItem(DeffieHellman.PUBLIC_KEY_JWK)),
+        JSON.parse(window.localStorage.getItem(DeffieHellman.PRIVATE_KEY_JWK)),
+        this.sampleText
+      )
+      this.dfDecryptedSampleText1 = await DeffieHellman.decrypt(
+        JSON.parse(window.localStorage.getItem(DeffieHellman.PUBLIC_KEY_JWK)),
+        JSON.parse(window.localStorage.getItem(DeffieHellman.PRIVATE_KEY_JWK)),
+        this.dfEncryptedSampleText1
+      )
     },
   })
 </script>
