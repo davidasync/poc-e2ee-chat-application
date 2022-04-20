@@ -1,77 +1,65 @@
-class Deffiehellman {
+class DeffieHellman {
   constructor() {
-    this.publicKeyJwk = null;
-    this.privateKeyJwk = null;
-    this.publicKey = null;
-    this.privateKey = null;
-    this.derivedKey = null;
   }
+
+  static PUBLIC_KEY_JWK = 'PUBLIC_KEY_JWK'
+  static PRIVATE_KEY_JWK = 'PRIVATE_KEY_JWK'
 
   async initialize() {
     const keyPair = await window.crypto.subtle.generateKey(
-      {
-        name: "ECDH",
-        namedCurve: "P-256",
-      },
+      { name: "ECDH", namedCurve: "P-256" },
       true,
       ["deriveKey", "deriveBits"]
     );
   
-    this.publicKeyJwk = await window.crypto.subtle.exportKey(
-      "jwk",
-      keyPair.publicKey
-    );
-  
-    this.privateKeyJwk = await window.crypto.subtle.exportKey(
-      "jwk",
-      keyPair.privateKey
-    );
+    const publicKeyJwk = await window.crypto.subtle.exportKey("jwk", keyPair.publicKey);
+    const privateKeyJwk = await window.crypto.subtle.exportKey("jwk", keyPair.privateKey);
 
-    this.publicKey = await window.crypto.subtle.importKey(
-      "jwk",
-      this.publicKeyJwk,
-      {
-        name: "ECDH",
-        namedCurve: "P-256",
-      },
-      true,
-      []
-    );
-  
-    this.privateKey = await window.crypto.subtle.importKey(
-      "jwk",
-      this.privateKeyJwk,
-      {
-        name: "ECDH",
-        namedCurve: "P-256",
-      },
-      true,
-      ["deriveKey", "deriveBits"]
-    );
-
-    this.derivedKey = await window.crypto.subtle.deriveKey(
-      { name: "ECDH", public: this.publicKey },
-      this.privateKey,
-      { name: "AES-GCM", length: 256 },
-      true,
-      ["encrypt", "decrypt"]
-    );
+    window.localStorage.setItem(DeffieHellman.PUBLIC_KEY_JWK, JSON.stringify(publicKeyJwk))
+    window.localStorage.setItem(DeffieHellman.PRIVATE_KEY_JWK, JSON.stringify(privateKeyJwk))
   }
 
   static async create() {
-    const o = new Deffiehellman()
+    const o = new DeffieHellman()
 
     await o.initialize()
 
     return o
   }
 
-  async encrypt(text) {
+  static async getDerivedKey(publicKeyJwk, privateKeyJwk) {
+    const publicKey = await window.crypto.subtle.importKey(
+      "jwk",
+      publicKeyJwk,
+      { name: "ECDH", namedCurve: "P-256" },
+      true,
+      []
+    );
+  
+    const privateKey = await window.crypto.subtle.importKey(
+      "jwk",
+      privateKeyJwk,
+      { name: "ECDH", namedCurve: "P-256" },
+      true,
+      ["deriveKey", "deriveBits"]
+    );
+
+    return window.crypto.subtle.deriveKey(
+      { name: "ECDH", public: publicKey },
+      privateKey,
+      { name: "AES-GCM", length: 256 },
+      true,
+      ["encrypt", "decrypt"]
+    );
+  }
+
+  static async encrypt(publicKeyJwk, privateKeyJwk, text) {
+    const derivedKey = await this.getDerivedKey(publicKeyJwk, privateKeyJwk)
     const encodedText = new TextEncoder().encode(text);
 
     const encryptedData = await window.crypto.subtle.encrypt(
       { name: "AES-GCM", iv: new TextEncoder().encode("Initialization Vector") },
-      this.derivedKey,
+      derivedKey,
       encodedText
     );
   
@@ -82,8 +70,10 @@ class Deffiehellman {
     return base64Data;
   }
 
-  async decrypt(text) {
+  static async decrypt(publicKeyJwk, privateKeyJwk, text) {
     try {
+      const derivedKey = await this.getDerivedKey(publicKeyJwk, privateKeyJwk)
+
       const string = atob(text);
       const uintArray = new Uint8Array(
         [...string].map((char) => char.charCodeAt(0))
@@ -95,7 +85,7 @@ class Deffiehellman {
 
       const decryptedData = await window.crypto.subtle.decrypt(
         algorithm,
-        this.derivedKey,
+        derivedKey,
         uintArray
       );
   
@@ -106,4 +96,4 @@ class Deffiehellman {
   }
 }
 
-export default Deffiehellman
+export default DeffieHellman
