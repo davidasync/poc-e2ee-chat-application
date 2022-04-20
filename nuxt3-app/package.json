@@ -11,5 +11,8 @@
     "postcss": "^8.4.12",
     "tailwindcss": "^3.0.23"
   },
-  "dependencies": {}
+  "dependencies": {
+    "crypto-js": "^4.1.1",
+    "crypto-random-string": "^4.0.0"
+  }
 }
