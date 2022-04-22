@@ -3,48 +3,44 @@
     <p>sampleText: {{ sampleText }}</p>
     <p>symEncryptedSampleText1: {{ symEncryptedSampleText1 }}</p>
     <p>symDecryptedSampleText1: {{ symDecryptedSampleText1 }}</p>
-    <p>dfEncryptedSampleText1: {{ dfEncryptedSampleText1 }}</p>
-    <p>dfDecryptedSampleText1: {{ dfDecryptedSampleText1 }}</p>
+    <p>rsaEncryptedSampleText1: {{ rsaEncryptedSampleText1 }}</p>
+    <p>rsaDecryptedSampleText1: {{ rsaDecryptedSampleText1 }}</p>
   </NuxtLayout>
 </template>
 
 <script lang="ts">
   import { defineComponent } from 'vue'
   import Symmetrical from '../lib/Symmetrical'
-  import DeffieHellman from '../lib/DeffieHellman'
-
+  import Asymmetrical from '../lib/Asymmetrical'
   export default defineComponent({
     layout: 'custom',
     data() {
       return {
         // username: '',
         sampleText: 'This is a secure message from Mary',
+
         symEncryptedSampleText1: '',
         symDecryptedSampleText1: '',
-        dfEncryptedSampleText1: '',
-        dfDecryptedSampleText1: '',
+
+        rsaEncryptedSampleText1: '',
+        rsaDecryptedSampleText1: '',
       }
     },
     async mounted() {
-      const roomId = '1'
-      new Symmetrical(roomId)
-      this.symEncryptedSampleText1 = await Symmetrical.encrypt(roomId, this.sampleText)
-      this.symDecryptedSampleText1 = await Symmetrical.decrypt(roomId, this.symEncryptedSampleText1)
-
-      console.log('publicKeyJwk', JSON.parse(window.localStorage.getItem(DeffieHellman.PUBLIC_KEY_JWK)))
-      console.log('privateKeyJwk', JSON.parse(window.localStorage.getItem(DeffieHellman.PRIVATE_KEY_JWK)))
-
-      await DeffieHellman.create()
-      this.dfEncryptedSampleText1 = await DeffieHellman.encrypt(
-        JSON.parse(window.localStorage.getItem(DeffieHellman.PUBLIC_KEY_JWK)),
-        JSON.parse(window.localStorage.getItem(DeffieHellman.PRIVATE_KEY_JWK)),
-        this.sampleText
+      new Symmetrical(1)
+      this.symEncryptedSampleText1 = await Symmetrical.encrypt(1, this.sampleText)
+      this.symDecryptedSampleText1 = await Symmetrical.decrypt(1, this.symEncryptedSampleText1)
+      
+      new Asymmetrical()
+      this.rsaEncryptedSampleText1 = Asymmetrical.encrypt(
+        window.localStorage.getItem(Asymmetrical.RSA_PUBLIC_KEY),
+        this.sampleText,
       )
-      this.dfDecryptedSampleText1 = await DeffieHellman.decrypt(
-        JSON.parse(window.localStorage.getItem(DeffieHellman.PUBLIC_KEY_JWK)),
-        JSON.parse(window.localStorage.getItem(DeffieHellman.PRIVATE_KEY_JWK)),
-        this.dfEncryptedSampleText1
+
+      this.rsaDecryptedSampleText1 = Asymmetrical.decrypt(
+        window.localStorage.getItem(Asymmetrical.RSA_PRIVATE_KEY),
+        this.rsaEncryptedSampleText1,
       )
-    },
+    }
   })
 </script>
