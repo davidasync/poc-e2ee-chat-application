@@ -1,13 +1,16 @@
+/*
+ * Copyright (c) 2022 LINE Corporation. All rights reserved.
+ * LINE Corporation PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ */
+
 package com.github.davidasync.poc.e2ee
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.springframework.data.domain.Range
-import org.springframework.data.redis.core.ReactiveSetOperations
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate
 import org.springframework.data.redis.core.ReactiveValueOperations
 import org.springframework.data.redis.core.ReactiveZSetOperations
@@ -22,12 +25,15 @@ import java.time.Duration
 @Repository
 class ChatRepository(
     objectMapper: ObjectMapper,
-    private val redisTemplate: ReactiveStringRedisTemplate
+    private val redisTemplate: ReactiveStringRedisTemplate,
 ) {
     private val stringSerializer = StringRedisSerializer()
-
     private val idGenerator: ReactiveValueOperations<String, String> = redisTemplate.opsForValue()
-    private val charRoomMemberSet: ReactiveSetOperations<String, String> = redisTemplate.opsForSet()
+
+    companion object {
+        fun getChatKey(chatRoomId: Long) = "ROOM:$chatRoomId:CHAT"
+        fun getChatIdKey(chatRoomId: Long) = "ROOM:$chatRoomId:CHAT:ID"
+    }
 
     private val chatSet: ReactiveZSetOperations<String, Chat> = redisTemplate.opsForZSet(
         RedisSerializationContext.newSerializationContext<String, Chat>(stringSerializer)
@@ -35,29 +41,11 @@ class ChatRepository(
             .build()
     )
 
-    private val chatRoomValue: ReactiveValueOperations<String, ChatRoom> = redisTemplate.opsForValue(
-        RedisSerializationContext.newSerializationContext<String, ChatRoom>(stringSerializer)
-            .value(Jackson2JsonRedisSerializer(ChatRoom::class.java).apply { setObjectMapper(objectMapper) })
-            .build()
-    )
-
-    suspend fun generateChatRoomId(): Long {
-        val chatRoomIdKey = "ROOM:ID"
-
-        return idGenerator.increment(chatRoomIdKey).awaitSingle()
-            .also { redisTemplate.expire(chatRoomIdKey, Duration.ofHours(1)).awaitSingle() }
-    }
-
-    suspend fun generateChatId(roomId: Long): Long {
-        val chatIdKey = "ROOM:$roomId:CHAT:ID"
+    suspend fun generateChatId(chatRoomId: Long): Long {
+        val chatIdKey = getChatIdKey(chatRoomId)
 
         return idGenerator.increment(chatIdKey).awaitSingle()
             .also { redisTemplate.expire(chatIdKey, Duration.ofHours(1)).awaitSingle() }
-    }
-
-    suspend fun getChatRoom(roomId: Long): ChatRoom {
-        return chatRoomValue.get("ROOM:$roomId").awaitSingleOrNull()
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "ROOM_NOT_FOUND")
     }
 
     suspend fun getChats(roomId: Long): List<Chat> {
@@ -65,33 +53,20 @@ class ChatRepository(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "ROOM_NOT_FOUND")
     }
 
-    suspend fun createChatRoom(chatRoomRequest: ChatRoomRequest): ChatRoom = coroutineScope {
-        val chatRoomId = generateChatRoomId()
-        val chatRoomKey = "ROOM:$chatRoomId"
-        val chatRoomMemberKey = "ROOM:$chatRoomId:MEMBER"
-
-        val chatRoom = ChatRoom(
-            id = chatRoomId,
-            member = listOf(chatRoomRequest.username)
-        )
-
-        launch {
-            charRoomMemberSet.add(chatRoomMemberKey, chatRoomRequest.username).awaitSingleOrNull()
-            chatRoomValue.set(chatRoomKey, chatRoom).awaitSingleOrNull()
-        }
-
-        return@coroutineScope chatRoom
-    }
 
     suspend fun pushChat(roomId: Long, chatRequest: ChatRequest): Boolean? = coroutineScope {
-        val isRoomIdExists = redisTemplate.hasKey("ROOM:$roomId").awaitSingleOrNull()
-        val roomMember = charRoomMemberSet.isMember("ROOM:$roomId:MEMBER", chatRequest.username).awaitSingleOrNull()
+//        val isRoomIdExists = redisTemplate
+//            .hasKey(getChatRoomKey(roomId))
+//            .awaitSingleOrNull()
+//
+//        val roomMember = charRoomMemberSet
+//            .isMember("ROOM:$roomId:MEMBER", chatRequest.username).awaitSingleOrNull()
+//
+//        if (isRoomIdExists == null || isRoomIdExists == false || roomMember == null || roomMember == false) {
+//            throw ResponseStatusException(HttpStatus.NOT_FOUND, "ROOM_OR_USERNAME_NOT_FOUND")
+//        }
 
-        if (isRoomIdExists == null || isRoomIdExists == false || roomMember == null || roomMember == false) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, "ROOM_OR_USERNAME_NOT_FOUND")
-        }
-
-        val chatKey = "ROOM:$roomId:CHAT"
+        val chatKey = getChatKey(roomId)
         val chatId = generateChatId(roomId)
 
         val chat = Chat(
